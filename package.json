@@ -1,0 +1,9 @@
+{
+  "name": "trk-attendance",
+  "version": "1.0.0",
+  "description": "Simple attendance web app server",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  }
+}

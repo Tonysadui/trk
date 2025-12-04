@@ -1,5 +1,14 @@
 {
-  "students": [],
-  "groups": [],
-  "attendances": {}
+  "users": {
+    "admin": {
+      "salt": "586fce5dae051448124e35468ee59198",
+      "hash": "abcff1c513f6bf80ee25b21d28fa4d50d0900b4bc2c7994fd0352f66a538bc5d581b1682125ae9c1dba775696beceb63f81028ae3baeb8607195dfd60dc4c90a"
+    }
+  },
+  "state": {
+    "students": [],
+    "groups": [],
+    "attendances": {},
+    "updatedAt": 0
+  }
 }
