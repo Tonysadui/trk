@@ -1,0 +1,170 @@
+/* modern.css — современный глянцевый стиль для attendance-app */
+/* modern.css — минималистичный светлый стиль для attendance-app */
+
+:root {
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --success: #22c55e;
+  --danger: #ef4444;
+  --warning: #f59e42;
+  --info: #0ea5e9;
+  --light: #f8fafc;
+  --dark: #18181b;
+  --muted: #64748b;
+  --border: #e2e8f0;
+  --radius: 16px;
+  --shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.18);
+  --glass-bg: rgba(255,255,255,0.18);
+  --glass-border: 1.5px solid rgba(255,255,255,0.25);
+  --glass-blur: blur(16px);
+  --glass-gradient: linear-gradient(135deg, #e0e7ff 0%, #f8fafc 100%);
+  --transition: all 0.22s cubic-bezier(.4,0,.2,1);
+}
+
+
+html, body {
+  background: var(--light);
+  min-height: 100vh;
+  font-family: 'Inter', 'Roboto', Arial, sans-serif;
+  color: var(--dark);
+}
+
+
+.header {
+  background: var(--glass-bg);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.18);
+  border-radius: var(--radius);
+  padding: 18px 32px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  transition: var(--transition);
+  backdrop-filter: var(--glass-blur);
+  border: var(--glass-border);
+}
+
+
+.logo {
+  background: var(--glass-bg);
+  box-shadow: 0 2px 16px #4da3ff33, 0 0 0 4px #4da3ff11;
+  border-radius: 16px;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(8px);
+  border: var(--glass-border);
+  transition: var(--transition);
+}
+
+
+.btn {
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  font-weight: 600;
+  font-size: 1rem;
+  padding: 11px 26px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px #2563eb11;
+  transition: var(--transition);
+  outline: none;
+  position: relative;
+  backdrop-filter: blur(4px);
+}
+.btn.glassy {
+  background: var(--glass-gradient);
+  color: var(--primary);
+  border: var(--glass-border);
+  box-shadow: 0 2px 16px #4da3ff22;
+  backdrop-filter: blur(8px);
+}
+.btn.glassy:hover, .btn.glassy:focus {
+  background: linear-gradient(135deg, #e0e7ff 10%, #c7d2fe 100%);
+  color: var(--primary-hover);
+  box-shadow: 0 4px 24px #4da3ff33;
+}
+.btn:hover, .btn:focus {
+  background: var(--primary-hover);
+  box-shadow: 0 4px 16px #2563eb22;
+}
+.btn:active {
+  background: var(--primary);
+  box-shadow: 0 1px 4px #2563eb22;
+}
+
+
+.btn.ghost {
+  background: var(--glass-bg);
+  color: var(--primary);
+  border: var(--glass-border);
+  box-shadow: none;
+  backdrop-filter: blur(4px);
+}
+.btn.ghost:hover, .btn.ghost:focus {
+  background: #f1f5f9cc;
+  color: var(--primary-hover);
+}
+
+
+.card, .course-card, .group-card, .student-card, .admin-card {
+  background: var(--glass-bg);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  border: var(--glass-border);
+  transition: var(--transition);
+  padding: 20px 18px 18px 18px;
+  backdrop-filter: var(--glass-blur);
+}
+.card:hover, .course-card:hover, .group-card:hover, .student-card:hover, .admin-card:hover {
+  box-shadow: 0 12px 48px #2563eb22;
+  border-color: #c7d2fe;
+  transform: translateY(-2px) scale(1.012);
+  background: rgba(255,255,255,0.28);
+}
+
+
+.muted {
+  color: var(--muted);
+}
+
+/* Glassmorphism for forms */
+.input, input, select, textarea {
+  background: var(--glass-bg);
+  border: var(--glass-border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  color: var(--dark);
+  font-size: 1em;
+  font-family: inherit;
+  box-shadow: 0 2px 8px #2563eb11;
+  transition: var(--transition);
+  backdrop-filter: blur(6px);
+}
+.input:focus, input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: #2563eb;
+  background: #fff;
+  box-shadow: 0 0 0 2px #2563eb22;
+}
+.input::placeholder, input::placeholder, textarea::placeholder {
+  color: #94a3b8;
+}
+
+/* Анимация появления карточек */
+.glass-appear {
+  animation: glassFadeIn .7s cubic-bezier(.4,1.4,.6,1);
+}
+@keyframes glassFadeIn {
+  from { opacity: 0; transform: translateY(24px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (max-width: 600px) {
+  .header { flex-direction: column; align-items: flex-start; padding: 14px 8px; }
+  .btn { width: 100%; margin-bottom: 8px; }
+  .card, .course-card, .group-card, .student-card, .admin-card { padding: 14px 6px 12px 6px; }
+}

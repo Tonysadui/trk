@@ -1,0 +1,1695 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Посещаемость колледжа</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="modern.css">
+    <link rel="stylesheet" href="style.css">
+    <style>
+</style>
+</head>
+<body>
+  <button class="btn small" onclick="location.href='/change-password.html'">Сменить пароль</button>
+  <button class="btn ghost small" onclick="logout()">Выйти</button>
+  <div class="page-wrap">
+    <div class="app" id="app">
+      <header class="header">
+        <div class="brand">
+          <div class="logo">
+            <img src="logo-trk.png" alt="Логотип Таш-Кумырский региональный колледж" style="max-width:56px;max-height:56px;border-radius:12px;box-shadow:0 8px 24px rgba(77,163,255,0.1);background:#fff;" />
+          </div>
+          <div>
+            <h1>Attendance</h1>
+            <p class="muted">Single-page attendance manager — local only</p>
+          </div>
+        </div>
+        <div class="hdr-actions">
+          <div class="muted" id="labelToday" aria-live="polite"></div>
+          <button type="button" class="btn ghost" id="homeBtn">Главная</button>
+          <button type="button" class="btn" id="statsBtn">📊 Отчёт</button>
+          <button type="button" class="btn small" id="adminBtn">Админ</button>
+        </div>
+      </header>
+      <div class="container">
+        <!-- Root pages -->
+        <section id="homePage" class="page" role="region" aria-label="Главная"></section>
+        <section id="groupPage" class="page" role="region" aria-label="Группа"></section>
+        <section id="statsPage" class="page" role="region" aria-label="Статистика"></section>
+        <section id="adminPage" class="page" role="region" aria-label="Админ"></section>
+      </div>
+    </div>
+  </div>
+  <!-- print container used for printable week -->
+  <div id="printContainer" style="display:none;"></div>
+  <!-- container used for rendering the fancy report before converting to image -->
+  <div id="reportRenderRoot" style="position:fixed;left:-9999px;top:0;width:1024px;z-index:9999"></div>
+  <!-- flash -->
+  <div class="flash-wrap" id="flashWrap" aria-live="polite"></div>
+  <!-- External libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- Firebase (compat) - used for simple realtime sync between devices. -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script>
+    // ...existing code from your main <script> (весь JS-код, кроме дублирующихся logout и init)
+    // ...existing code...
+    function logout(){
+      localStorage.removeItem('token');
+      location.href = '/login.html';
+    }
+  </script>
+</body>
+</html>
+@media (max-width: 600px) {
+  .app { max-width: 100%; padding: 8px;}
+  .header { flex-direction: column; align-items: flex-start; }
+  .logo { font-size: 18px; height: 40px; padding: 0 12px; }
+}
+
+.muted { color: var(--muted); }
+  :root{
+    --bg:#071026;
+    --panel:linear-gradient(180deg,#0e1626,#0a1220);
+    --muted:#9aa6b8;
+    --accent:#4da3ff;
+    --accent-2:#3d8ee6;
+    --glass: rgba(255,255,255,0.02);
+    --success:#17d78d;
+    --danger:#ff6b6b;
+    --radius:14px;
+    --card-shadow: 0 12px 40px rgba(2,6,23,0.7);
+    --smooth: cubic-bezier(.2,.9,.2,1);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:linear-gradient(180deg,#06070a 0%, #071226 60%);font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial;color:#e8f4ff;-webkit-font-smoothing:antialiased}
+  .page-wrap{min-height:100vh;padding:28px;display:flex;justify-content:center;align-items:flex-start}
+  .app{
+    width:100%;max-width:1100px;background:var(--panel);border-radius:18px;padding:18px;box-shadow:var(--card-shadow);border:1px solid rgba(255,255,255,0.02);
+  }
+
+  /* Header */
+  .header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}
+  .brand{display:flex;gap:12px;align-items:center}
+  .logo{width:56px;height:56px;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:flex;align-items:center;justify-content:center;color:white;font-weight:700;box-shadow:0 8px 24px rgba(77,163,255,0.08)}
+  .brand h1{margin:0;font-size:18px}
+  .brand p{margin:0;color:var(--muted);font-size:13px}
+
+  .hdr-actions{display:flex;gap:8px;align-items:center}
+  .btn{background:transparent;border:1px solid rgba(255,255,255,0.04);padding:8px 12px;border-radius:10px;color:var(--accent);cursor:pointer;font-weight:600;transition:all .16s var(--smooth);outline:none}
+  .btn:hover{transform:translateY(-3px);box-shadow:0 10px 30px rgba(77,163,255,0.06)}
+  .btn.ghost{color:var(--muted);border-color:rgba(255,255,255,0.02);background:transparent}
+  .btn.primary{background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#031026;border:none}
+  .btn.danger{color:var(--danger);border-color:rgba(255,107,107,0.08)}
+  .small{padding:6px 8px;font-size:13px;border-radius:8px}
+
+  /* Container & pages */
+  .container{display:flex;flex-direction:column;gap:16px}
+  .page{opacity:0;transform:translateY(8px);transition:all .28s var(--smooth);display:none}
+  .page.active{opacity:1;transform:none;display:block}
+
+  /* Grid courses */
+  .courses{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+  @media (max-width:980px){ .courses{grid-template-columns:1fr} .header{flex-direction:column;align-items:flex-start;gap:10px} }
+
+  .course-card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));padding:14px;border-radius:12px;border:1px solid rgba(255,255,255,0.02)}
+  .course-title{display:flex;justify-content:space-between;align-items:center}
+  .course-title h3{margin:0}
+  .groups-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-top:12px}
+
+  .group-card{background:linear-gradient(135deg, rgba(77,163,255,0.06), rgba(77,163,255,0.02));padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,0.02);transition:all .18s var(--smooth)}
+  .group-card:hover{transform:translateY(-6px);box-shadow:0 18px 45px rgba(3,10,30,0.6)}
+  .group-head{display:flex;justify-content:space-between;gap:8px;align-items:center}
+  .group-name{font-weight:700}
+  .meta{color:var(--muted);font-size:13px}
+
+  .add-row{display:flex;gap:8px;align-items:center;padding:10px;background:rgba(255,255,255,0.02);border-radius:12px;border:1px solid rgba(255,255,255,0.02);flex-wrap:wrap}
+  .input, select {background:transparent;border:1px solid rgba(255,255,255,0.03);padding:8px 10px;border-radius:10px;color:inherit;outline:none;min-width:160px}
+  .input::placeholder{color:rgba(255,255,255,0.25)}
+
+  /* Group page */
+  .group-header{display:flex;justify-content:space-between;align-items:center;gap:12px}
+  .avatar{width:64px;height:64px;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:flex;align-items:center;justify-content:center;font-weight:700;color:white}
+  .students-tools{display:flex;gap:10px;align-items:center;margin-top:12px;flex-wrap:wrap}
+  .students-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-top:12px}
+
+  .student-card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));padding:10px;border-radius:12px;display:flex;gap:12px;align-items:center;border:1px solid rgba(255,255,255,0.02);transition:all .14s var(--smooth)}
+  .student-card:hover{transform:translateY(-6px);box-shadow:0 18px 40px rgba(2,6,23,0.6)}
+  .student-avatar{width:56px;height:56px;border-radius:10px;background:linear-gradient(135deg,#0f2230,rgba(255,255,255,0.02));display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--accent)}
+  .student-name{font-weight:600}
+  .student-actions{display:flex;gap:8px;align-items:center}
+
+  .att-btn{background:transparent;border:1px solid rgba(255,255,255,0.03);padding:8px;border-radius:10px;cursor:pointer;color:var(--muted);min-width:44px;min-height:44px}
+  .att-btn.present{color:var(--success);border-color:rgba(23,215,141,0.08)}
+  .att-btn.absent{color:var(--danger);border-color:rgba(255,107,107,0.08)}
+  .att-btn.undo{color:var(--muted)}
+
+  .status-pill{padding:6px 8px;border-radius:999px;font-weight:700}
+
+  /* Week selector */
+  .week-controls{display:flex;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap}
+  .days-row{display:flex;gap:8px;flex-wrap:wrap}
+  .day-btn{padding:8px 10px;border-radius:8px;background:transparent;border:1px solid rgba(255,255,255,0.03);cursor:pointer;color:var(--muted);min-width:72px;text-align:center}
+  .day-btn.active{background:linear-gradient(90deg,var(--accent),var(--accent-2));color:white;border:none;box-shadow:0 8px 30px rgba(77,163,255,0.06)}
+
+  /* Week matrix table */
+  .week-table-wrap{margin-top:12px;overflow:auto;border-radius:10px;border:1px solid rgba(255,255,255,0.03);background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005));padding:8px}
+  table.week-table{width:100%;border-collapse:collapse;font-size:13px}
+  table.week-table th, table.week-table td{padding:8px;border-bottom:1px dashed rgba(255,255,255,0.02);text-align:left;vertical-align:middle}
+  table.week-table th{position:sticky;top:0;background:rgba(255,255,255,0.01);z-index:2;font-weight:700}
+  table.week-table td.center{width:64px;text-align:center;font-weight:700}
+  table.week-table td.present{background:rgba(23,215,141,0.08);color:var(--success)}
+  table.week-table td.absent{background:rgba(255,107,107,0.06);color:var(--danger)}
+  table.week-table td.none{color:var(--muted)}
+
+  /* Stats page */
+  .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+  .mini-bar{height:10px;border-radius:6px;background:linear-gradient(90deg,#243b52, #3d8ee6);overflow:hidden}
+  .mini-bar-inner{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-2));border-radius:6px}
+
+  /* Admin */
+  .admin-card{padding:12px;border-radius:12px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.02)}
+
+  /* Flash */
+  .flash-wrap{position:fixed;right:24px;top:24px;display:flex;flex-direction:column;gap:10px;z-index:9999}
+  .flash{padding:12px 14px;border-radius:10px;background:linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border:1px solid rgba(255,255,255,0.02);font-weight:700;opacity:1;transition:opacity .28s ease, transform .18s var(--smooth)}
+  .flash.info{color:var(--accent)}
+  .flash.success{color:var(--success)}
+  .flash.warn{color:#ffb542}
+  .flash.danger{color:var(--danger)}
+
+  /* pagination */
+  .pagination{display:flex;gap:6px;align-items:center}
+  .page-btn{padding:6px 8px;border-radius:8px;background:transparent;border:1px solid rgba(255,255,255,0.03);cursor:pointer;color:var(--muted)}
+  .page-btn.active{background:linear-gradient(90deg,var(--accent),var(--accent-2));color:white;border:none}
+
+  /* helper */
+  .muted{color:var(--muted)}
+  .right{margin-left:auto}
+
+/* print */
+@media print {
+  body * { visibility: hidden; }
+  #printContainer, #printContainer * { visibility: visible; }
+  #printContainer { position: absolute; left: 0; top: 0; width: 100%; }
+}
+
+/* Дополнительные медиа-запросы для мобильных */
+@media (max-width: 768px) {
+  .page-wrap { padding: 14px; } /* Уменьшить отступы */
+  .app { padding: 14px; border-radius: 12px; }
+  .header { flex-direction: column; align-items: flex-start; gap: 12px; } /* Уже есть, но уточнить */
+  .courses { grid-template-columns: 1fr; gap: 12px; } /* Уже есть, но добавить gap */
+  .students-grid { grid-template-columns: 1fr; gap: 12px; } /* Сделать одну колонка для студентов */
+  .student-card { padding: 12px; flex-direction: column; align-items: flex-start; gap: 12px; } /* Вертикальная ориентация карточек */
+  .student-actions { flex-wrap: wrap; gap: 8px; justify-content: center; } /* Кнопки в ряд или перенос */
+  .btn { padding: 10px 14px; font-size: 14px; min-width: 44px; min-height: 44px; } /* Увеличить для тач */
+  .att-btn { min-width: 48px; min-height: 48px; font-size: 16px; } /* Крупнее для отметок */
+  .input, select { padding: 10px 12px; font-size: 16px; } /* Предотвратить зум на iOS */
+  .pagination { flex-wrap: wrap; justify-content: center; }
+  .flash { font-size: 14px; padding: 10px 12px; } /* Меньше для мобильных */
+  table.week-table td.center{width:44px}
+}
+@media (max-width: 480px) {
+  .logo { width: 48px; height: 48px; } /* Меньше логотип */
+  .brand h1 { font-size: 16px; }
+  .brand p { font-size: 12px; }
+  .group-header { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .avatar { width: 56px; height: 56px; }
+  .stats-grid { grid-template-columns: 1fr; gap: 12px; } /* Одна колонка для статистики */
+  .admin-card { padding: 10px; }
+  .muted { font-size: 12px; } /* Мельче текст */
+  body { font-size: 14px; } /* Общий размер шрифта */
+}
+/* Убрать hover-эффекты на тач-устройствах для предотвращения мерцания */
+@media (hover: none) and (pointer: coarse) {
+  .btn:hover, .group-card:hover, .student-card:hover { transform: none; box-shadow: none; }
+}
+
+</style>
+</head>
+<script>
+(function(){
+  try {
+    const token = localStorage.getItem('token');
+    const pathname = location.pathname.replace(/\/+$/, '');
+    if (!token && !pathname.endsWith('/login.html') && !pathname.endsWith('/change-password.html')) {
+      window.location.href = '/login.html';
+      return;
+    }
+    const _nativeFetch = window.fetch.bind(window);
+    window.fetch = (input, init) => {
+      try {
+        let url = (typeof input === 'string') ? input : (input && input.url) || '';
+        if (url && url.indexOf('/api/') === 0) {
+          init = init || {};
+          init.headers = init.headers || {};
+          if (!init.headers['Authorization'] && !init.headers['authorization']) {
+            init.headers['Authorization'] = 'Bearer ' + localStorage.getItem('token');
+          }
+          if (!init.headers['Content-Type'] && !(init.body instanceof FormData)) {
+            init.headers['Content-Type'] = 'application/json';
+          }
+        }
+      } catch(e){}
+      return _nativeFetch(input, init);
+    };
+  } catch(e){ console.error('auth bootstrap error', e); }
+})();
+</script>
+<body>
+  <button class="btn small" onclick="location.href='/change-password.html'">Сменить пароль</button>
+<button class="btn ghost small" onclick="logout()">Выйти</button>
+
+<script>
+function logout(){
+  localStorage.removeItem('token');
+  location.href = '/login.html';
+}
+</script>
+  <div class="page-wrap">
+    <div class="app" id="app">
+      <header class="header">
+        <div class="brand">
+          <div class="logo">
+  <img src="logo-trk.png" alt="Логотип Таш-Кумырский региональный колледж" style="max-width:56px;max-height:56px;border-radius:12px;box-shadow:0 8px 24px rgba(77,163,255,0.1);background:#fff;" />
+</div>
+          <div>
+            <h1>Attendance</h1>
+            <p class="muted">Single-page attendance manager — local only</p>
+          </div>
+        </div>
+        <div class="hdr-actions">
+          <div class="muted" id="labelToday" aria-live="polite"></div>
+          <button type="button" class="btn ghost" id="homeBtn">Главная</button>
+          <button type="button" class="btn" id="statsBtn">📊 Отчёт</button>
+          <button type="button" class="btn small" id="adminBtn">Админ</button>
+        </div>
+      </header>
+
+
+      <div class="container">
+        <!-- Root pages -->
+        <section id="homePage" class="page" role="region" aria-label="Главная"></section>
+        <section id="groupPage" class="page" role="region" aria-label="Группа"></section>
+        <section id="statsPage" class="page" role="region" aria-label="Статистика"></section>
+        <section id="adminPage" class="page" role="region" aria-label="Админ"></section>
+      </div>
+    </div>
+  </div>
+
+  <!-- print container used for printable week -->
+  <div id="printContainer" style="display:none;"></div>
+
+  <!-- container used for rendering the fancy report before converting to image -->
+  <div id="reportRenderRoot" style="position:fixed;left:-9999px;top:0;width:1024px;z-index:9999"></div>
+
+  <!-- flash -->
+  <div class="flash-wrap" id="flashWrap" aria-live="polite"></div>
+
+<!-- External libraries -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<!-- Firebase (compat) - used for simple realtime sync between devices.
+     You will need to create a Firebase project and Realtime Database and paste its config
+     in Admin page to enable syncing. -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+
+<script>
+/* =========================
+   Config / Constants
+   ========================= */
+const ADMIN_PASSWORD = 'admin123';
+const STORAGE_KEY = 'simbank_attendance_v1';
+const PAGE_SIZE = 18;
+
+/* Firebase sync keys */
+const FIREBASE_CONFIG_KEY = 'simbank_attendance_fb_config';
+const FIREBASE_SYNC_ENABLED_KEY = 'simbank_attendance_sync_enabled';
+let firebaseApp = null;
+let firebaseDbRef = null;
+let firebaseAuthUser = null;
+let remoteSyncEnabled = Boolean(localStorage.getItem(FIREBASE_SYNC_ENABLED_KEY));
+
+// Вставить в index.html (после определения defaultState и пр.)
+// Асинхронный loadState: пробуем получить с /api/state, иначе из localStorage
+async function loadState(){
+  try{
+    const resp = await fetch('/api/state', { cache: 'no-store' });
+    if(resp.ok){
+      const json = await resp.json();
+      // сохраняем локально как кеш
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(json));
+      return json;
+    }
+  }catch(e){
+    // если сервер недоступен — падаем в локальный storage
+  }
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if(!raw) { const s = defaultState(); localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); return s; }
+  try { return JSON.parse(raw); } catch(e){ const s=defaultState(); localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); return s; }
+}
+
+// Асинхронный saveState: пытаемся слить на сервер (merge), иначе сохраняем локально
+async function saveState(s){
+  s.updatedAt = Date.now();
+  // сохраняем локально сразу
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
+  // попытка отправки merge на сервер
+  try{
+    const resp = await fetch('/api/state/merge', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(s)
+    });
+    if(resp.ok){
+      const { state: serverState } = await resp.json();
+      // актуализируем локальный cache состоянием сервера (чтобы избежать конфликтов)
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(serverState));
+      // обновим глобальную переменную состояния в SPA, если нужно
+      state = serverState;
+      return;
+    } else {
+      console.warn('Server returned non-OK on merge', resp.status);
+    }
+  }catch(e){
+    // сервер может быть недоступен — работаем только локально
+    console.warn('Remote save failed, kept locally', e);
+  }
+}
+/* =========================
+   Utilities
+   ========================= */
+function uid(prefix='id'){ return prefix + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2,8) }
+function todayISO(d=new Date()){
+  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+function isoToDate(iso){
+  const [y,m,d] = iso.split('-').map(Number);
+  return new Date(y, m-1, d);
+}
+function escapeHtml(s){ if(!s && s!==0) return ''; return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* =========================
+   Storage
+   ========================= */
+function defaultState(){
+  return {
+    groups: [],
+    students: [],
+    attendances: {},
+    createdAt: Date.now(),
+    updatedAt: Date.now()
+  };
+}
+function loadState(){
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if(!raw) { const s=defaultState(); saveState(s); return s; }
+  try { return JSON.parse(raw) } catch(e){ console.error('corrupt storage, resetting', e); const s=defaultState(); saveState(s); return s; }
+}
+function saveState(s){
+  s.updatedAt = Date.now();
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
+  // also push to remote if enabled
+  if(remoteSyncEnabled && firebaseDbRef){
+    pushStateToRemote(s);
+  }
+}
+
+/* =========================
+   Flash
+   ========================= */
+const flashWrap = document.getElementById('flashWrap');
+function flash(text, type='info', ttl=3000){
+  const el = document.createElement('div');
+  el.className = 'flash ' + (type||'info');
+  el.textContent = text;
+  flashWrap.appendChild(el);
+  setTimeout(()=> el.style.opacity = '0', ttl-300);
+  setTimeout(()=> el.remove(), ttl);
+}
+
+/* =========================
+   App state + helpers
+   ========================= */
+let state = loadState();
+let currentSelectedDate = todayISO();
+
+function groupsByCourse(){
+  const map = {};
+  for(const g of state.groups){
+    if(!map[g.course]) map[g.course]=[];
+    map[g.course].push(g);
+  }
+  return map;
+}
+function groupById(id){ return state.groups.find(g=>g.id===id) }
+function studentsByGroup(groupId){ return state.students.filter(s=>s.groupId===groupId).sort((a,b)=>a.name.localeCompare(b.name)) }
+function attendanceForDate(date){ return state.attendances[date] || {} }
+function lastMarkFor(studentId, date){
+  const bucket = attendanceForDate(date)[studentId] || [];
+  return bucket.length ? bucket[bucket.length-1] : null;
+}
+
+/* =========================
+   CRUD operations
+   ========================= */
+function addGroup(name, course){
+  const n=name.trim();
+  if(!n) { flash('Введите название группы', 'warn'); return null; }
+  const g={ id: uid('g'), name:n, course: Number(course), createdAt: Date.now() };
+  state.groups.push(g);
+  saveState(state);
+  flash(`Группа "${g.name}" добавлена`, 'success');
+  return g;
+}
+function deleteGroup(groupId){
+  const g = groupById(groupId);
+  if(!g) return;
+  const studentIds = state.students.filter(s=>s.groupId===groupId).map(s=>s.id);
+  state.students = state.students.filter(s=>s.groupId!==groupId);
+  for(const date of Object.keys(state.attendances)){
+    for(const sid of studentIds) if(state.attendances[date] && state.attendances[date][sid]) delete state.attendances[date][sid];
+    if(Object.keys(state.attendances[date]||{}).length===0) delete state.attendances[date];
+  }
+  state.groups = state.groups.filter(x=>x.id!==groupId);
+  saveState(state);
+  flash(`Группа "${g.name}" удалена`, 'danger');
+}
+
+function addStudent(groupId, name){
+  const n=name.trim();
+  if(!n) { flash('Введите ФИО студента', 'warn'); return null; }
+  const s={ id: uid('s'), groupId, name:n, createdAt: Date.now() };
+  state.students.push(s);
+  saveState(state);
+  flash(`Студент "${n}" добавлен`, 'success');
+  return s;
+}
+
+function deleteStudent(studentId){
+  const s = state.students.find(x=>x.id===studentId);
+  if(!s) return;
+  for(const date of Object.keys(state.attendances)){
+    if(state.attendances[date] && state.attendances[date][studentId]) delete state.attendances[date][studentId];
+    if(Object.keys(state.attendances[date]||{}).length===0) delete state.attendances[date];
+  }
+  state.students = state.students.filter(x=>x.id!==studentId);
+  saveState(state);
+  flash(`Студент "${s.name}" удалён`, 'warn');
+}
+
+function markAttendance(studentId, status, dateIso=null, comment=''){
+  const date = dateIso || todayISO();
+  if(!state.attendances[date]) state.attendances[date] = {};
+  if(!state.attendances[date][studentId]) state.attendances[date][studentId] = [];
+  state.attendances[date][studentId].push({ status, ts: Date.now(), comment: comment || '' });
+  saveState(state);
+  flash(status === 'present' ? 'Отметка: пришёл' : 'Отметка: отсутствует', status === 'present' ? 'success' : 'danger');
+}
+function undoAttendance(studentId, dateIso=null){
+  const date = dateIso || todayISO();
+  if(!state.attendances[date] || !state.attendances[date][studentId] || state.attendances[date][studentId].length===0){
+    flash('Нечего отменять за выбранную дату', 'warn'); return;
+  }
+  const popped = state.attendances[date][studentId].pop();
+  if(state.attendances[date][studentId].length===0) delete state.attendances[date][studentId];
+  if(Object.keys(state.attendances[date]||{}).length===0) delete state.attendances[date];
+  saveState(state);
+  flash('Последняя отметка отменена', 'info');
+}
+
+    // Если нет токена — перебрасываем на логин
+    const token = localStorage.getItem("token");
+    if (!token) {
+        window.location.href = "/login.html";
+    }
+
+    // Функция отправки запросов с токеном
+    async function api(url, method = "GET", body = null) {
+        return await fetch(url, {
+            method,
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + token
+            },
+            body: body ? JSON.stringify(body) : null
+        });
+    }
+
+/* =========================
+   Export / Import
+   ========================= */
+function exportBackup(){
+  const data = JSON.stringify(state, null, 2);
+  const blob = new Blob([data], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'attendance_backup.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=> URL.revokeObjectURL(url), 1000);
+  flash('Экспорт начался', 'info');
+}
+function importBackupFile(file){
+  const reader = new FileReader();
+  reader.onload = ()=> {
+    try{
+      const json = JSON.parse(reader.result);
+      if(!json.groups || !json.students || !json.attendances) { flash('Неверный формат файла', 'danger'); return; }
+      if(!confirm('Импорт заменит локальные данные. Продолжить?')) return;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(json));
+      state = loadState();
+      renderCurrentRoute();
+      flash('Данные импортированы', 'success');
+    }catch(e){
+      console.error(e); flash('Ошибка при импорте', 'danger');
+    }
+  };
+  reader.readAsText(file);
+}
+
+/* =========================
+   Realtime sync (Firebase Realtime Database)
+   - This is an optional feature. To enable:
+     1) Create a Firebase project (https://console.firebase.google.com/)
+     2) Enable Realtime Database and set rules (for quick testing you can allow read/write)
+     3) Copy firebase config and paste it into Admin -> Firebase config (JSON)
+     4) Click "Enable Sync" on Admin page on every device that should sync.
+   Security note: For production you must secure the database and use proper auth/rules.
+*/
+function initFirebaseFromConfig(configObj){
+  try {
+    if(!configObj || !configObj.apiKey || !configObj.databaseURL) { flash('Неверная конфигурация Firebase', 'danger'); return; }
+    // initialize app (if already initialized, use existing)
+    if(firebaseApp) {
+      // if different project - reinitialize
+      try { firebase.app().delete(); } catch(e) {}
+      firebaseApp = null; firebaseDbRef = null; firebaseAuthUser = null;
+    }
+    firebaseApp = firebase.initializeApp(configObj);
+    // sign in anonymously so DB rules can identify the client if needed
+    firebase.auth().signInAnonymously().then(cred => {
+      firebaseAuthUser = cred.user;
+      const db = firebase.database();
+      // use a single shared path for the app; this means EVERYONE with same config will share same data
+      firebaseDbRef = db.ref('simbank_attendance_shared_v1');
+      // push local once (merge) and start listening
+      startListeningRemote();
+      // push local immediately so other devices see initial data (will be merged)
+      pushStateToRemote(state);
+      flash('Firebase: подключено', 'success');
+    }).catch(err => {
+      console.error('FB auth error', err);
+      flash('Ошибка авторизации Firebase: ' + (err.message || err.toString()), 'danger', 5000);
+    });
+  } catch(e){
+    console.error(e); flash('Ошибка при инициализации Firebase', 'danger');
+  }
+}
+function disableFirebaseSync(){
+  if(firebaseDbRef) firebaseDbRef.off();
+  firebaseApp = null;
+  firebaseDbRef = null;
+  firebaseAuthUser = null;
+  remoteSyncEnabled = false;
+  localStorage.removeItem(FIREBASE_SYNC_ENABLED_KEY);
+  flash('Синхронизация отключена', 'info');
+}
+function startListeningRemote(){
+  if(!firebaseDbRef) return;
+  firebaseDbRef.on('value', snap => {
+    const remote = snap.val();
+    if(!remote) return;
+    // avoid self-trigger loops: if remote.updatedAt equals local.updatedAt and it's our last push, ignore
+    // we'll merge remote into local (mergeRecords handles conflicts by timestamps)
+    const merged = mergeStates(state, remote);
+    state = merged;
+    saveState(state); // saveState will also push to remote, but timestamps avoid ping-pong
+    renderCurrentRoute();
+    flash('Данные синхронизированы с облаком', 'success', 1800);
+  }, err => {
+    console.error('Firebase listener error', err);
+    flash('Ошибка слушателя Firebase', 'danger');
+  });
+}
+
+function pushStateToRemote(s){
+  if(!firebaseDbRef) return;
+  try {
+    // clone small hygiene: remove any functions, ensure timestamps
+    const payload = JSON.parse(JSON.stringify(s));
+    payload.updatedAt = Date.now();
+    firebaseDbRef.set(payload).catch(err => {
+      console.error('FB set error', err);
+      flash('Ошибка отправки данных в облако', 'danger');
+    });
+  } catch(e){
+    console.error(e);
+  }
+}
+
+/* Merge strategy:
+   - For groups and students: keep union by id; when id collision, pick record with bigger createdAt
+   - For attendances: union all dates; for each student/date combine arrays and dedupe by ts
+   - updatedAt of merged result is max of both
+*/
+function mergeStates(local, remote){
+  if(!remote) return local;
+  const merged = {};
+  merged.groups = [];
+  merged.students = [];
+  merged.attendances = {};
+  // groups
+  const gm = {};
+  (local.groups || []).forEach(g => { gm[g.id] = g; });
+  (remote.groups || []).forEach(g => {
+    if(!gm[g.id] || (g.createdAt && gm[g.id].createdAt && g.createdAt > gm[g.id].createdAt)) gm[g.id] = g;
+  });
+  merged.groups = Object.values(gm);
+  // students
+  const sm = {};
+  (local.students || []).forEach(s => { sm[s.id] = s; });
+  (remote.students || []).forEach(s => {
+    if(!sm[s.id] || (s.createdAt && sm[s.id].createdAt && s.createdAt > sm[s.id].createdAt)) sm[s.id] = s;
+  });
+  merged.students = Object.values(sm);
+  // attendances
+  const allDates = new Set([...(Object.keys(local.attendances || {})), ...(Object.keys(remote.attendances || {}))]);
+  for(const date of allDates){
+    const localBucket = local.attendances && local.attendances[date] ? local.attendances[date] : {};
+    const remoteBucket = remote.attendances && remote.attendances[date] ? remote.attendances[date] : {};
+    const studIds = new Set([...(Object.keys(localBucket)), ...(Object.keys(remoteBucket))]);
+    merged.attendances[date] = {};
+    for(const sid of studIds){
+      const arrL = localBucket[sid] || [];
+      const arrR = remoteBucket[sid] || [];
+      const combined = [...arrL, ...arrR];
+      // dedupe by ts (timestamp) — keep unique by ts, and sort by ts ascending
+      const byTs = {};
+      combined.forEach(rec => { if(rec && rec.ts) byTs[rec.ts] = rec; });
+      const mergedArr = Object.values(byTs).sort((a,b)=> (a.ts||0)-(b.ts||0));
+      if(mergedArr.length) merged.attendances[date][sid] = mergedArr;
+    }
+    if(Object.keys(merged.attendances[date]).length===0) delete merged.attendances[date];
+  }
+  merged.createdAt = Math.max(local.createdAt || 0, remote.createdAt || 0);
+  merged.updatedAt = Math.max(local.updatedAt || 0, remote.updatedAt || 0);
+  return merged;
+}
+
+/* Load Firebase config from localStorage (if user saved it earlier) */
+function getSavedFirebaseConfig(){
+  const raw = localStorage.getItem(FIREBASE_CONFIG_KEY);
+  if(!raw) return null;
+  try { return JSON.parse(raw); } catch(e){ return null; }
+}
+function saveFirebaseConfig(cfg){
+  try { localStorage.setItem(FIREBASE_CONFIG_KEY, JSON.stringify(cfg)); } catch(e){}
+}
+
+/* =========================
+   Week helpers (Mon..Sat)
+   ========================= */
+function getMondayOf(dateObj){
+  const d = new Date(dateObj);
+  const day = d.getDay();
+  const diff = (day === 0) ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  d.setHours(0,0,0,0);
+  return d;
+}
+function buildWeekFromDate(isoDate){
+  const start = getMondayOf(isoToDate(isoDate));
+  const days = [];
+  for(let i=0;i<6;i++){
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    days.push(todayISO(d));
+  }
+  return days;
+}
+
+/* =========================
+   CSV & XLSX export for week matrix
+   ========================= */
+function exportWeekCSV(groupId, weekDays){
+  const studs = studentsByGroup(groupId);
+  const headers = ['ФИО','ID', ...weekDays];
+  const rows = [headers];
+  for(const s of studs){
+    const row = [s.name, s.id];
+    for(const d of weekDays){
+      const lastObj = lastMarkFor(s.id, d);
+      row.push(lastObj && lastObj.status === 'present' ? 'P' : lastObj && lastObj.status === 'absent' ? 'A' : '');
+    }
+    rows.push(row);
+  }
+  const csv = rows.map(r=> r.map(c=> `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `week_${weekDays[0]}_${groupId}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=> URL.revokeObjectURL(url), 1000);
+  flash('Экспорт CSV недели начат', 'info');
+}
+function exportWeekXLSX(groupId, weekDays){
+  const studs = studentsByGroup(groupId);
+  const aoa = [];
+  aoa.push(['ФИО','ID', ...weekDays]);
+  for(const s of studs){
+    const row = [s.name, s.id];
+    for(const d of weekDays){
+      const last = lastMarkFor(s.id, d);
+      if(last && last.status === 'present') row.push('P');
+      else if(last && last.status === 'absent') row.push('A');
+      else row.push('');
+    }
+    aoa.push(row);
+  }
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Week');
+  XLSX.writeFile(wb, `week_${weekDays[0]}_${groupId}.xlsx`);
+  flash('Экспорт XLSX недели начат', 'info');
+}
+
+/* =========================
+   Fancy PDF report generation (html2canvas + jsPDF)
+   Creates visually formatted report similar to sample
+*/
+async function generateFancyPDFReport(groupId, weekDays){
+  // Build report DOM in hidden root
+  const root = document.getElementById('reportRenderRoot');
+  root.innerHTML = ''; // clear
+  const g = groupById(groupId);
+  const studs = studentsByGroup(groupId);
+
+  const container = document.createElement('div');
+  container.style.width = '1024px';
+  container.style.padding = '28px';
+  container.style.background = '#ffffff';
+  container.style.color = '#111';
+  container.style.fontFamily = 'Inter, Arial, Helvetica, sans-serif';
+
+  // Header
+  const header = document.createElement('div');
+  header.style.display = 'flex';
+  header.style.justifyContent = 'space-between';
+  header.style.alignItems = 'center';
+  header.innerHTML = `
+    <div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="width:64px;height:64px;border-radius:8px;background:#4da3ff;color:white;display:flex;align-items:center;justify-content:center;font-weight:800">SB</div>
+        <div>
+          <div style="font-size:20px;font-weight:800;color:#023047">Отчёт посещаемости</div>
+          <div style="color:#666;margin-top:4px">${escapeHtml(g.name)} • Курс ${escapeHtml(String(g.course))}</div>
+        </div>
+      </div>
+    </div>
+    <div style="text-align:right">
+      <div style="font-weight:700">${weekDays[0]} — ${weekDays[weekDays.length-1]}</div>
+      <div style="color:#666;margin-top:4px">Создано: ${new Date().toLocaleString()}</div>
+    </div>
+  `;
+  container.appendChild(header);
+
+  // Summary cards (per-day percentages)
+  const summaryWrap = document.createElement('div');
+  summaryWrap.style.display = 'flex';
+  summaryWrap.style.gap = '10px';
+  summaryWrap.style.marginTop = '18px';
+  summaryWrap.style.flexWrap = 'wrap';
+  // compute per-day percents
+  const dayStats = weekDays.map(d=>{
+    const studsList = studs;
+    const possible = studsList.length;
+    let pres=0;
+    for(const s of studsList){
+      const last = lastMarkFor(s.id,d);
+      if(last && last.status === 'present') pres++;
+    }
+    return { day:d, pres, possible, pct: possible ? Math.round(pres/possible*100) : null };
+  });
+  dayStats.forEach(ds=>{
+    const card = document.createElement('div');
+    card.style.flex = '1 1 140px';
+    card.style.minWidth = '140px';
+    card.style.padding = '10px';
+    card.style.borderRadius = '10px';
+    card.style.background = '#f6fbff';
+    card.innerHTML = `<div style="font-size:14px;color:#333;font-weight:700">${ds.pct===null? '—' : ds.pct + '%'}</div><div style="font-size:12px;color:#666;margin-top:6px">${ds.day}</div>`;
+    summaryWrap.appendChild(card);
+  });
+  container.appendChild(summaryWrap);
+
+  // Small spacer
+  container.appendChild(document.createElement('div')).style.height = '18px';
+
+  // Week matrix: build HTML table
+  const tableWrap = document.createElement('div');
+  tableWrap.style.border = '1px solid #eee';
+  tableWrap.style.borderRadius = '8px';
+  tableWrap.style.overflow = 'hidden';
+  tableWrap.style.padding = '8px';
+  const table = document.createElement('table');
+  table.style.width = '100%';
+  table.style.borderCollapse = 'collapse';
+  table.style.fontSize = '12px';
+
+  const thead = document.createElement('thead');
+  const trh = document.createElement('tr');
+  trh.innerHTML = `<th style="text-align:left;padding:8px;border-bottom:1px solid #e6eef8">ФИО</th><th style="padding:8px;border-bottom:1px solid #e6eef8">ID</th>${weekDays.map(d=>`<th style="padding:8px;border-bottom:1px solid #e6eef8;text-align:center">${d.replace(/^\d+-/,'')}</th>`).join('')}`;
+  thead.appendChild(trh);
+  table.appendChild(thead);
+
+  const tbody = document.createElement('tbody');
+  for(const s of studs){
+    const tr = document.createElement('tr');
+    const nameTd = document.createElement('td'); nameTd.style.padding='8px'; nameTd.textContent = s.name;
+    const idTd = document.createElement('td'); idTd.style.padding='8px'; idTd.textContent = s.id;
+    tr.appendChild(nameTd); tr.appendChild(idTd);
+    for(const d of weekDays){
+      const lastObj = lastMarkFor(s.id, d);
+      const td = document.createElement('td');
+      td.style.padding = '8px';
+      td.style.textAlign = 'center';
+      if(lastObj && lastObj.status === 'present'){
+        td.textContent = '✓';
+        td.style.color = '#1b8a4a';
+      } else if(lastObj && lastObj.status === 'absent'){
+        td.textContent = '✕';
+        td.style.color = '#c23a2b';
+      } else {
+        td.textContent = '—';
+        td.style.color = '#999';
+      }
+      tr.appendChild(td);
+    }
+    tbody.appendChild(tr);
+  }
+  table.appendChild(tbody);
+  tableWrap.appendChild(table);
+  container.appendChild(tableWrap);
+
+  // Footer: small note
+  const footer = document.createElement('div');
+  footer.style.marginTop = '12px';
+  footer.style.color = '#666';
+  footer.style.fontSize = '12px';
+  footer.innerHTML = `Данные локальны, сохранены в браузере. Отчёт сгенерирован ${new Date().toLocaleString()}.`;
+  container.appendChild(footer);
+
+  // attach to root
+  root.appendChild(container);
+
+  // Use html2canvas to render
+  try {
+    flash('Генерация PDF — подождите...', 'info', 2500);
+    const canvas = await html2canvas(container, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+    const imgData = canvas.toDataURL('image/png');
+
+    // create PDF (A4 portrait)
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ unit: 'pt', format: 'a4', compress: true });
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+
+    // scale image to page width with margin
+    const margin = 28;
+    const usableWidth = pageWidth - margin * 2;
+    const scale = usableWidth / canvas.width;
+    const imgWidth = canvas.width * scale;
+    const imgHeight = canvas.height * scale;
+
+    if (imgHeight <= (pageHeight - margin * 2)) {
+      pdf.addImage(imgData, 'PNG', margin, margin, imgWidth, imgHeight);
+    } else {
+      // if too tall, add image split across pages
+      // naive pagination: draw full image and then add pages by drawing portions from canvas
+      const totalPages = Math.ceil(imgHeight / (pageHeight - margin * 2));
+      // create temporary canvas to slice original canvas
+      for (let i = 0; i < totalPages; i++) {
+        const srcY = i * (canvas.height / totalPages);
+        const srcH = canvas.height / totalPages;
+        const tmpCanvas = document.createElement('canvas');
+        tmpCanvas.width = canvas.width;
+        tmpCanvas.height = Math.ceil(srcH);
+        const ctx = tmpCanvas.getContext('2d');
+        ctx.drawImage(canvas, 0, srcY, canvas.width, srcH, 0, 0, canvas.width, srcH);
+        const tmpData = tmpCanvas.toDataURL('image/png');
+        const tmpImgHeight = srcH * scale;
+        if (i > 0) pdf.addPage();
+        pdf.addImage(tmpData, 'PNG', margin, margin, imgWidth, tmpImgHeight);
+      }
+    }
+
+    const filename = `report_${g.name.replace(/\s+/g,'_')}_${weekDays[0]}.pdf`;
+    pdf.save(filename);
+    flash('PDF готов', 'success', 2500);
+  } catch (err){
+    console.error(err);
+    flash('Ошибка при генерации PDF', 'danger', 4000);
+  } finally {
+    // cleanup
+    root.innerHTML = '';
+  }
+}
+
+/* =========================
+   Other rendering & routing (unchanged structure)
+   ========================= */
+const homePageEl = document.getElementById('homePage');
+const groupPageEl = document.getElementById('groupPage');
+const statsPageEl = document.getElementById('statsPage');
+const adminPageEl = document.getElementById('adminPage');
+const labelToday = document.getElementById('labelToday');
+
+function setActivePage(pageEl){
+  [homePageEl, groupPageEl, statsPageEl, adminPageEl].forEach(p=> p.classList.remove('active'));
+  pageEl.classList.add('active');
+}
+
+/* --- Home --- */
+function renderHome(){
+  setActivePage(homePageEl);
+  const courses = [1,2,3];
+  const root = document.createElement('div');
+
+  const add = document.createElement('div');
+  add.className='add-row';
+  add.innerHTML = `
+    <input id="newGroupName" class="input" placeholder="Название группы (напр. ПИ-21)" aria-label="Название группы" />
+    <input id="newGroupCourse" class="input" placeholder="Курс (число, напр. 1)" aria-label="Курс" />
+    <button type="button" class="btn small" id="createGroupBtn">Добавить группу</button>
+    <div class="muted right">Всего групп: <strong>${state.groups.length}</strong></div>
+  `;
+  root.appendChild(add);
+
+  const coursesWrap = document.createElement('div');
+  coursesWrap.className = 'courses';
+
+  for(const c of courses){
+    const card = document.createElement('div'); card.className='course-card';
+    const groups = state.groups.filter(g=>Number(g.course)===c);
+    card.innerHTML = `<div class="course-title"><h3>Курс ${c}</h3><div class="meta">${groups.length} групп</div></div><div class="groups-grid"></div>`;
+    const grid = card.querySelector('.groups-grid');
+    if(groups.length===0){
+      const emp = document.createElement('div'); emp.className='muted'; emp.textContent='Нет групп';
+      grid.appendChild(emp);
+    } else {
+      for(const g of groups){
+        const gc = document.createElement('div'); gc.className='group-card';
+        gc.innerHTML = `
+          <div class="group-head">
+            <div>
+              <div class="group-name">${escapeHtml(g.name)}</div>
+              <div class="meta">ID: ${g.id}</div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <button type="button" class="btn small openGroupBtn" data-id="${g.id}">Открыть</button>
+              <button type="button" class="btn small ghost deleteGroupBtn" data-id="${g.id}">🗑️</button>
+            </div>
+          </div>
+        `;
+        grid.appendChild(gc);
+      }
+    }
+    coursesWrap.appendChild(card);
+  }
+
+  const otherGroups = state.groups.filter(g=> ![1,2,3].includes(Number(g.course)));
+  if(otherGroups.length){
+    const card = document.createElement('div'); card.className='course-card';
+    card.innerHTML = `<div class="course-title"><h3>Другие курсы</h3><div class="meta">${otherGroups.length} групп</div></div><div class="groups-grid"></div>`;
+    const grid = card.querySelector('.groups-grid');
+    for(const g of otherGroups){
+      const gc = document.createElement('div'); gc.className='group-card';
+      gc.innerHTML = `
+        <div class="group-head">
+          <div>
+            <div class="group-name">${escapeHtml(g.name)}</div>
+            <div class="meta">Курс: ${escapeHtml(String(g.course))}</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button type="button" class="btn small openGroupBtn" data-id="${g.id}">Открыть</button>
+            <button type="button" class="btn small ghost deleteGroupBtn" data-id="${g.id}">🗑️</button>
+          </div>
+        </div>
+      `;
+      grid.appendChild(gc);
+    }
+    coursesWrap.appendChild(card);
+  }
+
+  root.appendChild(coursesWrap);
+  homePageEl.innerHTML = ''; homePageEl.appendChild(root);
+
+  document.getElementById('createGroupBtn').addEventListener('click', ()=> {
+    const name = document.getElementById('newGroupName').value;
+    const course = document.getElementById('newGroupCourse').value || '1';
+    if(!name.trim()) { flash('Введите название группы','warn'); return; }
+    addGroup(name, course);
+    renderHome();
+    document.getElementById('newGroupName').value = '';
+  });
+
+  homePageEl.querySelectorAll('.openGroupBtn').forEach(btn=> btn.addEventListener('click', (e)=> {
+    const id = e.currentTarget.dataset.id; location.hash = '#/group/' + id;
+  }));
+  homePageEl.querySelectorAll('.deleteGroupBtn').forEach(btn=> btn.addEventListener('click', (e)=> {
+    const id = e.currentTarget.dataset.id;
+    const g = groupById(id);
+    if(!g) return;
+    if(!confirm(`Удалить группу "${g.name}" и всех её студентов? Это действие необратимо.`)) return;
+    deleteGroup(id);
+    renderHome();
+  }));
+}
+
+/* --- Group page (with week table and fancy PDF) --- */
+function renderGroupPage(groupId){
+  const g = groupById(groupId);
+  if(!g){ flash('Группа не найдена','warn'); location.hash = '#/'; return; }
+  setActivePage(groupPageEl);
+  currentSelectedDate = currentSelectedDate || todayISO();
+
+  const root = document.createElement('div');
+
+  const hdr = document.createElement('div'); hdr.className='group-header';
+  hdr.innerHTML = `
+    <div style="display:flex;gap:12px;align-items:center">
+      <div class="avatar">${escapeHtml(g.name.charAt(0) || 'G')}</div>
+      <div>
+        <div style="font-weight:800;font-size:18px">${escapeHtml(g.name)}</div>
+        <div class="muted">Курс ${escapeHtml(String(g.course))} • создано ${new Date(g.createdAt).toLocaleDateString()}</div>
+        <div style="margin-top:6px" class="meta">Выбрана дата: <span id="todayStats">—</span></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button type="button" class="btn ghost" id="backHomeBtn">← Назад</button>
+      <button type="button" class="btn small" id="toAdminBtn">Админ</button>
+    </div>
+  `;
+  root.appendChild(hdr);
+
+  const weekControls = document.createElement('div');
+  weekControls.className = 'week-controls';
+  weekControls.innerHTML = `
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <button type="button" class="btn small" id="prevWeekBtn">◀ Пред. неделя</button>
+      <button type="button" class="btn small" id="nextWeekBtn">След. неделя ▶</button>
+      <button type="button" class="btn small" id="toggleWeekTableBtn">Показать таблицу недели</button>
+      <button type="button" class="btn small" id="exportWeekBtn">Экспорт недели (CSV)</button>
+      <button type="button" class="btn small" id="exportWeekXlsxBtn">Экспорт недели (XLSX)</button>
+      <button type="button" class="btn small" id="printWeekBtn">Печать недели</button>
+      <button type="button" class="btn small" id="fancyPdfBtn">Красивый PDF‑отчёт</button>
+    </div>
+    <div class="days-row" id="daysRow"></div>
+  `;
+  root.appendChild(weekControls);
+
+  const add = document.createElement('div'); add.className='add-row';
+  add.innerHTML = `
+    <input id="newStudentName" class="input" placeholder="ФИО студента" aria-label="ФИО студента" />
+    <button type="button" class="btn small" id="addStudentBtn">Добавить</button>
+    <input id="uploadTxt" type="file" accept=".txt" style="display:inline-block" />
+    <div class="muted right">Всего студентов: <strong id="studentsCount">${studentsByGroup(groupId).length}</strong></div>
+  `;
+  root.appendChild(add);
+
+  const tools = document.createElement('div'); tools.className='students-tools';
+  tools.innerHTML = `<input id="searchStudent" class="input" placeholder="Поиск по имени..." /><div id="paginationContainer" class="right"></div>`;
+  root.appendChild(tools);
+
+  const grid = document.createElement('div'); grid.className='students-grid'; grid.id='studentsGrid';
+  root.appendChild(grid);
+  const weekTableWrap = document.createElement('div'); weekTableWrap.className = 'week-table-wrap'; weekTableWrap.id = 'weekTableWrap'; weekTableWrap.style.display = 'none';
+  root.appendChild(weekTableWrap);
+
+  groupPageEl.innerHTML=''; groupPageEl.appendChild(root);
+
+  document.getElementById('backHomeBtn').addEventListener('click', ()=> location.hash = '#/');
+  document.getElementById('toAdminBtn').addEventListener('click', ()=> location.hash = '#/admin');
+
+  document.getElementById('addStudentBtn').addEventListener('click', ()=> {
+    const val = document.getElementById('newStudentName').value;
+    if(!val.trim()){ flash('Введите имя студента','warn'); return; }
+    addStudent(groupId, val);
+    document.getElementById('newStudentName').value = '';
+    renderGroupPage(groupId);
+  });
+  document.getElementById('uploadTxt').addEventListener('change', async (ev)=> {
+    const f = ev.target.files[0];
+    if(!f){ return; }
+    try{
+      const txt = await f.text();
+      const lines = txt.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+      let added=0;
+      for(const raw of lines){
+        const cleaned = raw.replace(/^\s*\d+[\-\.\)\s]+/,'').trim();
+        if(cleaned){ addStudent(groupId, cleaned); added++; }
+      }
+      flash(`Добавлено ${added} студентов из файла`, 'success');
+      renderGroupPage(groupId);
+    }catch(e){ console.error(e); flash('Ошибка чтения файла', 'danger'); }
+    ev.target.value='';
+  });
+
+  let monday = getMondayOf(isoToDate(currentSelectedDate));
+  function renderWeekButtons(){
+    const days = [];
+    for(let i=0;i<6;i++){
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      days.push(todayISO(d));
+    }
+    const daysRow = document.getElementById('daysRow');
+    daysRow.innerHTML = '';
+    days.forEach(iso=>{
+      const d = isoToDate(iso);
+      const label = d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'numeric' });
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'day-btn' + (iso === currentSelectedDate ? ' active' : '');
+      b.dataset.date = iso;
+      b.innerHTML = `<div style="font-weight:700">${label}</div><div style="font-size:12px;color:var(--muted)">${iso}</div>`;
+      b.addEventListener('click', ()=> {
+        currentSelectedDate = iso;
+        renderWeekButtons();
+        renderStudents();
+      });
+      daysRow.appendChild(b);
+    });
+    updateTodayStats(groupId, currentSelectedDate);
+  }
+  document.getElementById('prevWeekBtn').addEventListener('click', ()=> {
+    monday.setDate(monday.getDate() - 7);
+    const weekDays = buildWeekFromDate(todayISO(monday));
+    if(!weekDays.includes(currentSelectedDate)) currentSelectedDate = weekDays[0];
+    renderWeekButtons(); renderStudents(); renderWeekMatrix();
+  });
+  document.getElementById('nextWeekBtn').addEventListener('click', ()=> {
+    monday.setDate(monday.getDate() + 7);
+    const weekDays = buildWeekFromDate(todayISO(monday));
+    if(!weekDays.includes(currentSelectedDate)) currentSelectedDate = weekDays[0];
+    renderWeekButtons(); renderStudents(); renderWeekMatrix();
+  });
+
+  const toggleBtn = document.getElementById('toggleWeekTableBtn');
+  toggleBtn.addEventListener('click', ()=> {
+    const wrap = document.getElementById('weekTableWrap');
+    if(wrap.style.display === 'none'){
+      wrap.style.display = 'block';
+      toggleBtn.textContent = 'Скрыть таблицу недели';
+      renderWeekMatrix();
+    } else {
+      wrap.style.display = 'none';
+      toggleBtn.textContent = 'Показать таблицу недели';
+    }
+  });
+
+  document.getElementById('exportWeekBtn').addEventListener('click', ()=> {
+    const weekDays = buildWeekFromDate(todayISO(monday));
+    exportWeekCSV(groupId, weekDays);
+  });
+  document.getElementById('exportWeekXlsxBtn').addEventListener('click', ()=> {
+    const weekDays = buildWeekFromDate(todayISO(monday));
+    exportWeekXLSX(groupId, weekDays);
+  });
+  document.getElementById('printWeekBtn').addEventListener('click', ()=> {
+    const weekDays = buildWeekFromDate(todayISO(monday));
+    printWeek(groupId, weekDays);
+  });
+
+  document.getElementById('fancyPdfBtn').addEventListener('click', ()=> {
+    const weekDays = buildWeekFromDate(todayISO(monday));
+    generateFancyPDFReport(groupId, weekDays);
+  });
+
+  let page = 1;
+  const pageSize = PAGE_SIZE;
+  const searchInput = document.getElementById('searchStudent');
+
+  function renderStudents(){
+    const all = studentsByGroup(groupId);
+    const q = (searchInput.value || '').toLowerCase().trim();
+    const filtered = q ? all.filter(s=>s.name.toLowerCase().includes(q)) : all;
+    const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+    if(page > totalPages) page = totalPages;
+    const start = (page-1)*pageSize; const slice = filtered.slice(start, start+pageSize);
+
+    const studentsGrid = document.getElementById('studentsGrid');
+    studentsGrid.innerHTML = '';
+    if(slice.length === 0){
+      const empty = document.createElement('div'); empty.className='muted'; empty.textContent = 'Нет студентов';
+      studentsGrid.appendChild(empty);
+    } else {
+      for(const s of slice){
+        const lastObj = lastMarkFor(s.id, currentSelectedDate);
+        const last = lastObj ? lastObj.status : null;
+        const lastComment = lastObj ? lastObj.comment : '';
+        const card = document.createElement('div'); card.className='student-card';
+        card.innerHTML = `
+          <div class="student-avatar" aria-hidden="true">${escapeHtml((s.name||'?').split(/\s+/).map(p=>p[0]).slice(0,2).join('').toUpperCase())}</div>
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div>
+                <div class="student-name">${escapeHtml(s.name)}</div>
+                <div class="meta">ID: <span class="muted">${s.id}</span></div>
+                ${ lastComment ? `<div class="muted" style="font-size:12px">Примечание: ${escapeHtml(lastComment)}</div>` : '' }
+              </div>
+              <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+                <div class="muted" style="font-weight:700">${ last ? (last==='present' ? '✅' : '❌') : '—' }</div>
+                <div class="muted" style="font-size:12px">${s.createdAt ? new Date(s.createdAt).toLocaleDateString() : ''}</div>
+              </div>
+            </div>
+          </div>
+          <div class="student-actions">
+            <button type="button" class="att-btn present" data-sid="${s.id}">✅</button>
+            <button type="button" class="att-btn absent" data-sid="${s.id}">❌</button>
+            <button type="button" class="att-btn undo" data-sid="${s.id}">↩️</button>
+            <button type="button" class="btn small ghost delete-stud" data-sid="${s.id}">🗑️</button>
+          </div>
+        `;
+        studentsGrid.appendChild(card);
+      }
+    }
+
+    const pagWrap = document.getElementById('paginationContainer');
+    pagWrap.innerHTML = '';
+    if(filtered.length > pageSize){
+      const pag = document.createElement('div'); pag.className='pagination';
+      const prev = document.createElement('button'); prev.type='button'; prev.className='page-btn'; prev.textContent='‹';
+      prev.disabled = page===1; prev.addEventListener('click', ()=>{ page--; renderStudents();});
+      pag.appendChild(prev);
+      const maxPagesToShow = 6;
+      let startP = Math.max(1, page - Math.floor(maxPagesToShow/2));
+      let totalP = Math.ceil(filtered.length/pageSize);
+      let endP = Math.min(totalP, startP + maxPagesToShow -1);
+      if(endP - startP < maxPagesToShow -1) startP = Math.max(1, endP - maxPagesToShow +1);
+      for(let p=startP;p<=endP;p++){
+        const b = document.createElement('button'); b.type='button'; b.className='page-btn' + (p===page?' active':''); b.textContent = p;
+        b.addEventListener('click', ()=>{ page=p; renderStudents(); });
+        pag.appendChild(b);
+      }
+      const next = document.createElement('button'); next.type='button'; next.className='page-btn'; next.textContent='›';
+      next.disabled = page===totalP; next.addEventListener('click', ()=>{ page++; renderStudents();});
+      pag.appendChild(next);
+      pagWrap.appendChild(pag);
+    }
+
+    document.querySelectorAll('.att-btn.present').forEach(b=> b.addEventListener('click', e=> {
+      const sid = e.currentTarget.dataset.sid;
+      const comment = prompt('Комментарий (необязательно):', '') || '';
+      markAttendance(sid,'present', currentSelectedDate, comment); renderStudents(); updateTodayStats(groupId, currentSelectedDate); renderWeekMatrix();
+    }));
+    document.querySelectorAll('.att-btn.absent').forEach(b=> b.addEventListener('click', e=> {
+      const sid = e.currentTarget.dataset.sid;
+      const comment = prompt('Комментарий (необязательно):', '') || '';
+      markAttendance(sid,'absent', currentSelectedDate, comment); renderStudents(); updateTodayStats(groupId, currentSelectedDate); renderWeekMatrix();
+    }));
+    document.querySelectorAll('.att-btn.undo').forEach(b=> b.addEventListener('click', e=> {
+      const sid = e.currentTarget.dataset.sid; undoAttendance(sid, currentSelectedDate); renderStudents(); updateTodayStats(groupId, currentSelectedDate); renderWeekMatrix();
+    }));
+    document.querySelectorAll('.delete-stud').forEach(b=> b.addEventListener('click', e=> {
+      const sid = e.currentTarget.dataset.sid;
+      const s = state.students.find(x=>x.id===sid);
+      if(!s) return;
+      if(confirm(`Удалить студента "${s.name}"?`)) { deleteStudent(sid); renderStudents(); updateTodayStats(groupId, currentSelectedDate); renderWeekMatrix(); }
+    }));
+
+    document.getElementById('studentsCount').textContent = studentsByGroup(groupId).length;
+    updateTodayStats(groupId, currentSelectedDate);
+  }
+
+  searchInput.addEventListener('input', ()=> { page=1; renderStudents(); });
+
+  function renderWeekMatrix(){
+    const wrap = document.getElementById('weekTableWrap');
+    const weekDays = buildWeekFromDate(todayISO(monday));
+    const studs = studentsByGroup(groupId);
+    const table = document.createElement('table'); table.className = 'week-table';
+    const thead = document.createElement('thead');
+    const thRow = document.createElement('tr');
+    thRow.innerHTML = `<th>ФИО</th><th>ID</th>${weekDays.map(d=>`<th class="center">${d.replace(/^\d+-/,'')}</th>`).join('')}`;
+    thead.appendChild(thRow);
+    table.appendChild(thead);
+    const tbody = document.createElement('tbody');
+    for(const s of studs){
+      const tr = document.createElement('tr');
+      const firstTd = document.createElement('td'); firstTd.textContent = s.name;
+      const idTd = document.createElement('td'); idTd.textContent = s.id;
+      tr.appendChild(firstTd); tr.appendChild(idTd);
+      for(const d of weekDays){
+        const lastObj = lastMarkFor(s.id, d);
+        const last = lastObj ? lastObj.status : null;
+        const td = document.createElement('td');
+        td.className = 'center ' + (last ? last : 'none');
+        if(last === 'present') { td.textContent = '✓'; td.title = lastObj && lastObj.comment ? lastObj.comment : 'Пришёл'; }
+        else if(last === 'absent') { td.textContent = '✕'; td.title = lastObj && lastObj.comment ? lastObj.comment : 'Отсутствует'; }
+        else { td.textContent = '—'; td.title = 'Нет данных'; }
+        tr.appendChild(td);
+      }
+      tbody.appendChild(tr);
+    }
+    table.appendChild(tbody);
+    wrap.innerHTML = '';
+    const summary = document.createElement('div');
+    summary.style.display = 'flex';
+    summary.style.justifyContent = 'space-between';
+    summary.style.alignItems = 'center';
+    summary.style.marginBottom = '8px';
+    const weekDaysList = buildWeekFromDate(todayISO(monday));
+    const dayStats = weekDaysList.map(d=>{
+      const studsList = studentsByGroup(groupId);
+      const possible = studsList.length;
+      let pres=0;
+      for(const s of studsList){
+        const last = lastMarkFor(s.id,d);
+        if(last && last.status === 'present') pres++;
+      }
+      return { day:d, pres, possible, pct: possible ? Math.round(pres/possible*100) : null };
+    });
+    const left = document.createElement('div'); left.innerHTML = `<strong>Неделя: ${weekDaysList[0]} — ${weekDaysList[weekDaysList.length-1]}</strong>`;
+    const right = document.createElement('div'); right.style.display='flex'; right.style.gap='8px'; right.style.alignItems='center';
+    dayStats.forEach(ds=>{
+      const el = document.createElement('div'); el.style.minWidth='80px';
+      el.innerHTML = `<div style="font-weight:700">${ds.pct===null?'—':ds.pct + '%'}</div><div class="muted" style="font-size:12px">${ds.day}</div>`;
+      right.appendChild(el);
+    });
+    const controls = document.createElement('div');
+    controls.style.display = 'flex'; controls.style.gap='8px'; controls.style.marginTop='6px';
+    const exportBtnSmall = document.createElement('button'); exportBtnSmall.type='button'; exportBtnSmall.className='btn small'; exportBtnSmall.textContent='Экспорт (CSV)';
+    exportBtnSmall.addEventListener('click', ()=> exportWeekCSV(groupId, weekDaysList));
+    const exportXBtnSmall = document.createElement('button'); exportXBtnSmall.type='button'; exportXBtnSmall.className='btn small'; exportXBtnSmall.textContent='Экспорт (XLSX)';
+    exportXBtnSmall.addEventListener('click', ()=> exportWeekXLSX(groupId, weekDaysList));
+    const printBtnSmall = document.createElement('button'); printBtnSmall.type='button'; printBtnSmall.className='btn small'; printBtnSmall.textContent='Печать';
+    printBtnSmall.addEventListener('click', ()=> printWeek(groupId, weekDaysList));
+    controls.appendChild(exportBtnSmall); controls.appendChild(exportXBtnSmall); controls.appendChild(printBtnSmall);
+
+    wrap.appendChild(summary);
+    summary.appendChild(left); summary.appendChild(right);
+    wrap.appendChild(controls);
+    wrap.appendChild(table);
+  }
+
+  monday = getMondayOf(isoToDate(currentSelectedDate));
+  renderWeekButtons();
+  renderStudents();
+}
+
+/* --- Stats page with Chart.js --- */
+let statsChart = null;
+function renderStats(){
+  setActivePage(statsPageEl);
+  const root = document.createElement('div');
+  root.innerHTML = `<h2>Еженедельный отчёт (последние 7 дней)</h2><div class="muted" style="margin-bottom:8px">Отчёт показывает средние проценты посещаемости по группам и мини-графики по дням.</div>
+    <div style="margin-bottom:12px"><canvas id="groupsChart" height="160"></canvas></div>
+  `;
+  const grid = document.createElement('div'); grid.className='stats-grid';
+  const last7 = (function(){ const arr=[]; for(let i=6;i>=0;i--){ const d=new Date(); d.setDate(d.getDate()-i); arr.push(todayISO(d)); } return arr; })();
+
+  for(const g of state.groups){
+    const data = (function(){ return computeWeeklyStats(g.id, last7); })();
+    const valid = data.filter(x=>x.pct!==null);
+    const avgPct = valid.length ? Math.round(valid.reduce((acc,x)=>acc + (x.pct||0), 0) / valid.length) : 0;
+    const card = document.createElement('div'); card.className='course-card';
+    card.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div><strong>${escapeHtml(g.name)}</strong><div class="muted">Курс ${escapeHtml(String(g.course))}</div></div>
+        <div style="text-align:right"><div style="font-weight:800">${isNaN(avgPct) ? '—' : avgPct + '%'}</div><div class="muted">сред. за 7 дн.</div></div>
+      </div>
+      <div style="margin-top:10px" class="mini-bars" id="miniBars-${g.id}"></div>
+      <div style="margin-top:10px;display:flex;gap:8px;justify-content:flex-end">
+        <button type="button" class="btn small" data-gid="${g.id}" id="exportGroupWeek-${g.id}">Экспорт группы (CSV)</button>
+      </div>
+    `;
+    grid.appendChild(card);
+  }
+  root.appendChild(grid);
+  statsPageEl.innerHTML=''; statsPageEl.appendChild(root);
+
+  const ctx = document.getElementById('groupsChart').getContext('2d');
+  const labels = last7.map(d=> d.replace(/^\d+-/,''));
+  const palette = ['#4da3ff','#3d8ee6','#17d78d','#ffb542','#ff6b6b','#b983ff','#ffd166','#06d6a0'];
+  const datasets = [];
+  state.groups.forEach((g, idx)=>{
+    const data = computeWeeklyStats(g.id, last7).map(x => x.pct === null ? 0 : x.pct);
+    datasets.push({
+      label: g.name,
+      data,
+      borderColor: palette[idx % palette.length],
+      backgroundColor: palette[idx % palette.length] + '33',
+      tension: 0.2,
+      fill: true,
+      pointRadius: 3
+    });
+  });
+  if(statsChart) statsChart.destroy();
+  statsChart = new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'bottom' },
+        tooltip: { mode: 'index', intersect: false }
+      },
+      scales: {
+        y: { beginAtZero: true, max: 100, title: { display: true, text: 'Посещаемость (%)' } }
+      }
+    }
+  });
+
+  for(const g of state.groups){
+    const data = computeWeeklyStats(g.id, last7);
+    const container = document.getElementById('miniBars-' + g.id);
+    container.innerHTML = '';
+    for(const d of data){
+      const box = document.createElement('div');
+      box.style.marginBottom = '6px';
+      box.innerHTML = `<div style="display:flex;justify-content:space-between"><div class="muted" style="font-size:12px">${d.day}</div><div style="font-weight:700">${d.pct===null?'—':d.pct+'%'}</div></div><div class="mini-bar"><div class="mini-bar-inner" style="width:${d.pct===null?0:d.pct}%"></div></div>`;
+      container.appendChild(box);
+    }
+    const expBtn = document.getElementById('exportGroupWeek-' + g.id);
+    if(expBtn) expBtn.addEventListener('click', ()=> {
+      exportWeekCSV(g.id, last7);
+    });
+  }
+}
+
+/* --- Admin --- */
+function renderAdmin(){
+  setActivePage(adminPageEl);
+  const savedFb = getSavedFirebaseConfig();
+  const syncStatus = remoteSyncEnabled ? 'Включена' : 'Отключена';
+  const root = document.createElement('div');
+  root.innerHTML = `
+    <h2>Admin</h2>
+    <div class="admin-card">
+      <div style="display:flex;gap:8px;align-items:center">
+        <button type="button" class="btn danger" id="clearDataBtn">Очистить все данные</button>
+        <button type="button" class="btn" id="exportBtn">Экспорт (JSON)</button>
+        <input type="file" id="importFileInput" accept=".json" />
+        <div class="muted right">Groups: <strong>${state.groups.length}</strong> • Students: <strong>${state.students.length}</strong> • Days: <strong>${Object.keys(state.attendances).length}</strong></div>
+      </div>
+      <div style="margin-top:12px;color:var(--muted)">Пароль администратора требуется для очистки данных.</div>
+    </div>
+
+    <h3 style="margin-top:14px">Синхронизация (облако)</h3>
+    <div class="admin-card" style="margin-top:8px">
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div class="muted">Статус синхронизации: <strong id="syncStatus">${syncStatus}</strong></div>
+        <div class="muted">Чтобы включить синхронизацию между устройствами, создайте проект Firebase -> Realtime Database и вставьте конфигурацию ниже (JSON) и нажмите «Enable Sync» на каждом устройстве.</div>
+        <textarea id="fbConfigInput" style="width:100%;height:120px;background:transparent;border:1px solid rgba(255,255,255,0.03);color:inherit;padding:8px;border-radius:8px" placeholder='{"apiKey":"...","authDomain":"...","databaseURL":"...","projectId":"..."}'>${savedFb? JSON.stringify(savedFb,null,2): ''}</textarea>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button type="button" class="btn small" id="enableSyncBtn">${remoteSyncEnabled ? 'Переподключить' : 'Enable Sync'}</button>
+          <button type="button" class="btn small ghost" id="disableSyncBtn">Disable Sync</button>
+          <div class="muted right">Облачная синхронизация: <strong id="syncLocation">shared</strong></div>
+        </div>
+      </div>
+    </div>
+  `;
+  adminPageEl.innerHTML=''; adminPageEl.appendChild(root);
+
+  document.getElementById('exportBtn').addEventListener('click', ()=> exportBackup());
+  document.getElementById('importFileInput').addEventListener('change', (e)=> {
+    const f=e.target.files[0]; if(!f) return;
+    importBackupFile(f); e.target.value='';
+  });
+
+  document.getElementById('clearDataBtn').addEventListener('click', ()=> {
+    const pass = prompt('Введите пароль администратора:');
+    if(pass !== ADMIN_PASSWORD){ flash('Неверный пароль', 'danger'); return; }
+    if(!confirm('Удалить ВСЕ локальные данные (группы, студенты, посещения)?')) return;
+    localStorage.removeItem(STORAGE_KEY);
+    state = loadState();
+    flash('Данные удалены', 'danger');
+    location.hash = '#/';
+  });
+
+  document.getElementById('enableSyncBtn').addEventListener('click', ()=> {
+    const raw = document.getElementById('fbConfigInput').value;
+    if(!raw.trim()) { flash('Вставьте JSON-конфигурацию Firebase', 'warn'); return; }
+    let cfg = null;
+    try { cfg = JSON.parse(raw); } catch(e){ flash('Неверный JSON', 'danger'); return; }
+    saveFirebaseConfig(cfg);
+    localStorage.setItem(FIREBASE_SYNC_ENABLED_KEY, '1');
+    remoteSyncEnabled = true;
+    // initialize firebase and start sync
+    initFirebaseFromConfig(cfg);
+    document.getElementById('syncStatus').textContent = 'Включена';
+  });
+
+  document.getElementById('disableSyncBtn').addEventListener('click', ()=> {
+    disableFirebaseSync();
+    document.getElementById('syncStatus').textContent = 'Отключена';
+  });
+
+  // auto-connect if saved config and enabled
+  if(savedFb && localStorage.getItem(FIREBASE_SYNC_ENABLED_KEY)){
+    // slight delay to allow UI to render
+    setTimeout(()=> {
+      initFirebaseFromConfig(savedFb);
+      document.getElementById('syncStatus').textContent = 'Включена';
+    }, 300);
+  }
+}
+
+/* =========================
+   Router
+   ========================= */
+function renderCurrentRoute(){
+  const hash = location.hash || '#/';
+  labelToday.textContent = new Date().toLocaleDateString(undefined, { weekday:'short', month:'short', day:'numeric' });
+  if(hash === '#/' || hash === '#'){
+    renderHome();
+  } else if(hash.startsWith('#/group/')){
+    const id = hash.split('/')[2];
+    renderGroupPage(id);
+  } else if(hash === '#/stats'){
+    renderStats();
+  } else if(hash === '#/admin'){
+    renderAdmin();
+  } else {
+    renderHome();
+  }
+}
+window.addEventListener('hashchange', renderCurrentRoute);
+
+document.getElementById('homeBtn').addEventListener('click', ()=> location.hash = '#/');
+document.getElementById('adminBtn').addEventListener('click', ()=> location.hash = '#/admin');
+document.getElementById('statsBtn').addEventListener('click', ()=> location.hash = '#/stats');
+
+if(!location.hash) location.hash = '#/';
+renderCurrentRoute();
+
+/* =========================
+   Helpers
+   ========================= */
+function computeWeeklyStats(groupId=null, days=null){
+  const daysArr = days || (function(){
+    const arr=[];
+    for(let i=6;i>=0;i--){ const d=new Date(); d.setDate(d.getDate()-i); arr.push(todayISO(d)); }
+    return arr;
+  })();
+  const res = daysArr.map(day=>{
+    let present=0, possible=0;
+    const studs = groupId ? state.students.filter(s=>s.groupId===groupId) : state.students;
+    possible = studs.length;
+    for(const s of studs){
+      const recs = (state.attendances[day]||{})[s.id] || [];
+      if(recs.length){
+        const last = recs[recs.length-1];
+        if(last.status === 'present') present++;
+      }
+    }
+    const pct = possible ? Math.round(present/possible*100) : null;
+    return { day, present, possible, pct };
+  });
+  return res;
+}
+
+function printWeek(groupId, weekDays){
+  const studs = studentsByGroup(groupId);
+  let html = `<html><head><meta charset="utf-8"><title>Week report ${weekDays[0]}</title>`;
+  html += `<style>
+    body{font-family:Arial,Helvetica,sans-serif;color:#111}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:8px;border:1px solid #ddd;text-align:left}
+    th{background:#f4f4f4}
+    .present{color:green}
+    .absent{color:red}
+    .none{color:#888}
+  </style></head><body>`;
+  html += `<h2>Группа: ${escapeHtml(groupById(groupId).name)}</h2>`;
+  html += `<div>Период: ${weekDays[0]} — ${weekDays[weekDays.length-1]}</div>`;
+  html += `<table><thead><tr><th>ФИО</th><th>ID</th>${weekDays.map(d=>`<th>${d}</th>`).join('')}</tr></thead><tbody>`;
+  for(const s of studs){
+    html += `<tr><td>${escapeHtml(s.name)}</td><td>${s.id}</td>`;
+    for(const d of weekDays){
+      const last = lastMarkFor(s.id, d);
+      if(last && last.status === 'present') html += `<td class="present">✓</td>`;
+      else if(last && last.status === 'absent') html += `<td class="absent">✕</td>`;
+      else html += `<td class="none">—</td>`;
+    }
+    html += `</tr>`;
+  }
+  html += `</tbody></table></body></html>`;
+  const w = window.open('', '_blank', 'width=1000,height=800');
+  if(!w) { flash('Блокировщик всплывающих окон мешает печати', 'warn'); return; }
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
+  w.focus();
+  setTimeout(()=> w.print(), 600);
+}
+
+function updateTodayStats(groupId, dateIso=null){
+  try{
+    const el = document.querySelector('#todayStats');
+    if(!el) return;
+    const date = dateIso || todayISO();
+    const studs = studentsByGroup(groupId);
+    let pres=0, abs=0;
+    for(const s of studs){
+      const recs = (state.attendances[date]||{})[s.id] || [];
+      if(recs.length){
+        const last = recs[recs.length-1];
+        if(last.status==='present') pres++; else abs++;
+      }
+    }
+    el.textContent = `${date} — ${pres} ✓ | ${abs} ✕`;
+  }catch(e){}
+}
+
+/* debug */
+window.__SimBankAttendance = {
+  state, reload: ()=>{ state = loadState(); renderCurrentRoute(); },
+  export: ()=> JSON.parse(JSON.stringify(state))
+};
+</script>
+<button onclick="logout()">Выйти</button>
+
+<script>
+function logout() {
+    localStorage.removeItem("token");
+    window.location.href = "/login.html";
+}
+</script>
+</body>
+</html>

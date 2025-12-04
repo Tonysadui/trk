@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>QR-админка — Attendance</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="header">
+    <div class="logo-circle logo" tabindex="0" aria-label="Главная" role="button"><img src="logo-trk.png" alt="Логотип ТРК" style="width:40px;height:40px;" /></div>
+    <nav>
+      <button class="nav-btn home-btn active">Главная</button>
+      <button class="nav-btn admin-btn">Админ</button>
+    </nav>
+    <div class="user-block" style="margin-left:auto;display:flex;align-items:center;gap:10px;">
+      <span id="currentUser" style="color:#fff;font-size:15px;"></span>
+      <button id="logoutBtn" class="btn" style="padding:6px 14px;font-size:14px;">Выйти</button>
+    </div>
+  </header>
+  <main>
+    <section id="homePage" style="display:block">
+      <div class="fancy-card-inner">
+        <h1 tabindex="-1">Главная</h1>
+        <p>Добро пожаловать в Attendance!<br>Выберите действие в меню.</p>
+      </div>
+    </section>
+    <section id="groupPage" style="display:none">
+      <div class="fancy-card-inner">
+        <h1 tabindex="-1">Группа</h1>
+        <p>Здесь будет информация о группе.</p>
+      </div>
+    </section>
+    <section id="adminPage" style="display:none">
+      <div class="fancy-card-inner">
+        <h1 tabindex="-1">QR-админка</h1>
+        <div id="qr-admin-root"></div>
+      </div>
+    </section>
+  </main>
+  <div id="modalConfirm" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:#222a;z-index:1001;align-items:center;justify-content:center;">
+    <div class="modal-content" style="background:#222;padding:24px 18px;border-radius:14px;max-width:320px;margin:auto;color:#fff;text-align:center;">
+      <p>Есть несохранённые изменения. Покинуть страницу и потерять изменения?</p>
+      <button id="stayBtn" class="btn" style="margin:8px 8px 0 0;">Оставаться</button>
+      <button id="leaveBtn" class="btn">Покинуть</button>
+    </div>
+  </div>
+  <script src="admin-qr-ui.js"></script>
+  <script>
+    // Отображение текущего пользователя и выход
+    function getCurrentUser() {
+      // Пример: получить из localStorage или JWT
+      return localStorage.getItem('login') || 'admin';
+    }
+    function logout() {
+      localStorage.removeItem('token');
+      localStorage.removeItem('login');
+      location.href = 'login.html';
+    }
+    document.addEventListener('DOMContentLoaded', function() {
+      const user = getCurrentUser();
+      document.getElementById('currentUser').textContent = user;
+      document.getElementById('logoutBtn').onclick = logout;
+    });
+  </script>
+</body>
+</html>

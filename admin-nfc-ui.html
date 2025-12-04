@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>NFC-админка — Attendance</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="header-brand">
+    <div class="logo-circle logo" tabindex="0" aria-label="Главная" role="button"><img src="logo-trk.png" alt="Логотип ТРК" style="width:40px;height:40px;" /></div>
+    <nav>
+      <button class="nav-btn home-btn active">Главная</button>
+      <button class="nav-btn admin-btn">Админ</button>
+    </nav>
+    <div class="user-block" style="margin-left:auto;display:flex;align-items:center;gap:10px;">
+      <span id="currentUser" style="color:#fff;font-size:15px;"></span>
+      <button id="logoutBtn" class="btn" style="padding:6px 14px;font-size:14px;">Выйти</button>
+    </div>
+  </div>
+  <main>
+    <div class="fancy-card-inner">
+      <h1>NFC-админка</h1>
+      <div id="nfc-admin-root"></div>
+    </div>
+  </main>
+  <script src="admin-nfc-ui.js"></script>
+  <script>
+    // Отображение текущего пользователя и выход
+    function getCurrentUser() {
+      // Пример: получить из localStorage или JWT
+      return localStorage.getItem('login') || 'admin';
+    }
+    function logout() {
+      localStorage.removeItem('token');
+      localStorage.removeItem('login');
+      location.href = 'login.html';
+    }
+    document.addEventListener('DOMContentLoaded', function() {
+      const user = getCurrentUser();
+      document.getElementById('currentUser').textContent = user;
+      document.getElementById('logoutBtn').onclick = logout;
+    });
+  </script>
+</body>
+</html>
